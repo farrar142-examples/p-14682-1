@@ -1,0 +1,27 @@
+{
+  "analysis": {
+    "char_filter":{
+      "remove_whitespace": {
+        "type": "pattern_replace",
+        "pattern": "\\s+",
+        "replacement": ""
+      }
+    },
+    "tokenizer": {
+      "bigram_tokenizer": {
+        "type": "ngram",
+        "min_gram": 2,
+        "max_gram": 2,
+        "token_chars": ["letter", "digit"]
+      }
+    },
+    "analyzer": {
+      "bigram_analyzer": {
+        "type": "custom",
+        "tokenizer": "bigram_tokenizer",
+        "filter": ["lowercase"],
+        "char_filter": ["remove_whitespace"]
+      }
+    }
+  }
+}

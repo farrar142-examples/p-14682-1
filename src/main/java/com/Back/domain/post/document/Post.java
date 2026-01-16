@@ -4,23 +4,21 @@ package com.Back.domain.post.document;
 import lombok.Data;
 import lombok.Getter;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.elasticsearch.annotations.DateFormat;
-import org.springframework.data.elasticsearch.annotations.Document;
-import org.springframework.data.elasticsearch.annotations.Field;
-import org.springframework.data.elasticsearch.annotations.FieldType;
+import org.springframework.data.elasticsearch.annotations.*;
 
 import java.time.LocalDateTime;
 
 @Document(indexName="posts")
+@Setting(settingPath = "/elasticsearch/settings.json")
 @Getter
 public class Post {
 
     @Id
     private String id;
 
-    @Field(type= FieldType.Text)
+    @Field(type= FieldType.Text, analyzer = "bigram_analyzer", searchAnalyzer = "bigram_analyzer")
     private String title;
-    @Field(type= FieldType.Text)
+    @Field(type= FieldType.Text, analyzer = "bigram_analyzer", searchAnalyzer = "bigram_analyzer")
     private String content;
 
     @Field(type= FieldType.Keyword)
