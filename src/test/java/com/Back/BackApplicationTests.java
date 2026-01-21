@@ -2,6 +2,7 @@ package com.Back;
 
 import com.Back.domain.post.document.Post;
 import com.Back.domain.post.repository.PostRepository;
+import com.Back.domain.post.service.PostService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Order;
@@ -19,6 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 class BackApplicationTests {
 	@Autowired
 	private PostRepository postRepository;
+
+	@Autowired
+	private PostService postService;
 
 	@BeforeEach
 	void cleanUp(){
@@ -68,6 +72,55 @@ class BackApplicationTests {
 		// Case 5. 한영 혼용 테스트 - 성공
 		searchResult = postRepository.findByContent("Elasticsearch와 Spring", PageRequest.of(1,10));
 		assertEquals(1, searchResult.getTotalElements());
+	}
+
+	@Test
+	@Order(3)
+	@DisplayName("PostService 테스트")
+	void t3(){
+		// 1. 게시글 생성 테스트
+		Post createdPost = postService.create("서비스 테스트 제목", "서비스 테스트 내용", "테스트작성자");
+		assertNotEquals(null, createdPost.getId());
+		assertEquals("서비스 테스트 제목", createdPost.getTitle());
+		assertEquals("서비스 테스트 내용", createdPost.getContent());
+		assertEquals("테스트작성자", createdPost.getAuthor());
+
+		// 2. ID로 조회 테스트
+		Post foundPost = postService.findById(createdPost.getId());
+		assertEquals(createdPost.getId(), foundPost.getId());
+		assertEquals(createdPost.getTitle(), foundPost.getTitle());
+
+		// 3. 전체 조회 테스트 (페이징)
+		postService.create("두 번째 게시글", "두 번째 내용", "작성자2");
+		postService.create("세 번째 게시글", "세 번째 내용", "작성자3");
+		Page<Post> allPosts = postService.findAll(null,null,0, 10);
+		assertEquals(3, allPosts.getTotalElements());
+
+		// 4. 검색 테스트 - title
+		Page<Post> searchByTitle = postService.findAll("서비스", "title", 0, 10);
+		assertEquals(1, searchByTitle.getTotalElements());
+
+		// 5. 검색 테스트 - content
+		Page<Post> searchByContent = postService.findAll("두 번째", "content", 0, 10);
+		assertEquals(1, searchByContent.getTotalElements());
+
+		// 6. 검색 테스트 - author
+		Page<Post> searchByAuthor = postService.findAll("테스트작성자", "author", 0, 10);
+		assertEquals(1, searchByAuthor.getTotalElements());
+
+		// 7. 검색 테스트 - title_content
+		Page<Post> searchByTitleOrContent = postService.findAll("게시글", "title_content", 0, 10);
+		assertEquals(2, searchByTitleOrContent.getTotalElements());
+
+		// 8. 게시글 수정 테스트
+		Post updatedPost = postService.update(createdPost.getId(), "수정된 제목", "수정된 내용");
+		assertEquals("수정된 제목", updatedPost.getTitle());
+		assertEquals("수정된 내용", updatedPost.getContent());
+
+		// 9. 게시글 삭제 테스트
+		postService.delete(createdPost.getId());
+		Page<Post> afterDelete = postService.findAll(null,null,0, 10);
+		assertEquals(2, afterDelete.getTotalElements());
 	}
 
 }

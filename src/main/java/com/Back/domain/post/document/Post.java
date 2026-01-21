@@ -3,6 +3,7 @@ package com.Back.domain.post.document;
 
 import lombok.Data;
 import lombok.Getter;
+import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.*;
 
@@ -17,8 +18,10 @@ public class Post {
     private String id;
 
     @Field(type= FieldType.Text, analyzer = "bigram_analyzer", searchAnalyzer = "bigram_analyzer")
+    @Setter
     private String title;
     @Field(type= FieldType.Text, analyzer = "bigram_analyzer", searchAnalyzer = "bigram_analyzer")
+    @Setter
     private String content;
 
     @Field(type= FieldType.Keyword)
@@ -27,6 +30,7 @@ public class Post {
     @Field(type = FieldType.Date,format = DateFormat.date_hour_minute_second_millis)
     private LocalDateTime createdAt;
     @Field(type = FieldType.Date,format = DateFormat.date_hour_minute_second_millis)
+    @Setter
     private LocalDateTime updatedAt;
 
     public Post( String title, String content, String author) {
