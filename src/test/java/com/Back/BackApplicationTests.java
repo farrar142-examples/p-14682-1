@@ -3,26 +3,43 @@ package com.Back;
 import com.Back.domain.post.document.Post;
 import com.Back.domain.post.repository.PostRepository;
 import com.Back.domain.post.service.PostService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
+@AutoConfigureMockMvc
 class BackApplicationTests {
 	@Autowired
 	private PostRepository postRepository;
 
 	@Autowired
 	private PostService postService;
+
+	@Autowired
+	private MockMvc mockMvc;
+
+	private ObjectMapper objectMapper = new ObjectMapper();
 
 	@BeforeEach
 	void cleanUp(){
@@ -121,6 +138,83 @@ class BackApplicationTests {
 		postService.delete(createdPost.getId());
 		Page<Post> afterDelete = postService.findAll(null,null,0, 10);
 		assertEquals(2, afterDelete.getTotalElements());
+	}
+
+	@Test
+	@Order(4)
+	@DisplayName("PostController 테스트")
+	void t4() throws Exception {
+		// 1. 게시글 생성 테스트 - POST /api/v1/posts
+		String createRequest = objectMapper.writeValueAsString(
+				Map.of("title", "컨트롤러 테스트 제목", "content", "컨트롤러 테스트 내용", "author", "테스트작성자")
+		);
+
+		ResultActions createResult = mockMvc.perform(post("/api/v1/posts")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(createRequest))
+				.andDo(print())
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.title").value("컨트롤러 테스트 제목"))
+				.andExpect(jsonPath("$.content").value("컨트롤러 테스트 내용"))
+				.andExpect(jsonPath("$.author").value("테스트작성자"))
+				.andExpect(jsonPath("$.id").exists());
+
+		String responseJson = createResult.andReturn().getResponse().getContentAsString();
+		String postId = objectMapper.readTree(responseJson).get("id").asText();
+
+		// 2. ID로 조회 테스트 - GET /api/v1/posts/{id}
+		mockMvc.perform(get("/api/v1/posts/{id}", postId))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.id").value(postId))
+				.andExpect(jsonPath("$.title").value("컨트롤러 테스트 제목"));
+
+		// 3. 전체 조회 테스트 - GET /api/v1/posts
+		postService.create("두 번째 게시글", "두 번째 내용", "작성자2");
+		postService.create("세 번째 게시글", "세 번째 내용", "작성자3");
+
+		mockMvc.perform(get("/api/v1/posts")
+						.param("page", "0")
+						.param("size", "10"))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalElements").value(3));
+
+		// 4. 검색 테스트 - GET /api/v1/posts?query=컨트롤러&type=title
+		mockMvc.perform(get("/api/v1/posts")
+						.param("query", "컨트롤러")
+						.param("type", "title")
+						.param("page", "0")
+						.param("size", "10"))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalElements").value(1));
+
+		// 5. 게시글 수정 테스트 - PUT /api/v1/posts/{id}
+		String updateRequest = objectMapper.writeValueAsString(
+				Map.of("title", "수정된 제목", "content", "수정된 내용")
+		);
+
+		mockMvc.perform(put("/api/v1/posts/{id}", postId)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(updateRequest))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.title").value("수정된 제목"))
+				.andExpect(jsonPath("$.content").value("수정된 내용"));
+
+		// 6. 게시글 삭제 테스트 - DELETE /api/v1/posts/{id}
+		mockMvc.perform(delete("/api/v1/posts/{id}", postId))
+				.andDo(print())
+				.andExpect(status().isNoContent());
+
+		// 삭제 후 전체 조회로 확인
+		mockMvc.perform(get("/api/v1/posts")
+						.param("page", "0")
+						.param("size", "10"))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalElements").value(2));
 	}
 
 }
